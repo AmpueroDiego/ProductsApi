@@ -74,7 +74,7 @@ public class ProductServiceTests
         var id = await _service.CreateAsync(request);
 
         id.Should().Be(5);
-        await _repository.Received(1).CreateAsync(Arg.Is<Product>(p => p.ProductId == 5 && p.Name == "Mouse"));
+        await _repository.Received(1).CreateAsync(Arg.Is<Product>(p => p != null && p.ProductId == 5 && p.Name == "Mouse"));
     }
 
     [Fact]
@@ -105,7 +105,7 @@ public class ProductServiceTests
 
         var result = await _service.UpdateAsync(1, request);
 
-        await _repository.Received(1).UpdateAsync(Arg.Is<Product>(p => p.ProductId == 1 && p.Name == "Updated"));
+        await _repository.Received(1).UpdateAsync(Arg.Is<Product>(p => p != null && p.ProductId == 1 && p.Name == "Updated"));
         result.Name.Should().Be("Updated");
         result.StatusName.Should().Be("Inactive");
         result.FinalPrice.Should().Be(50m);
