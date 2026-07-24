@@ -23,4 +23,26 @@ public class StatusCacheTests
 
         name.Should().Be(expected);
     }
+
+    [Fact]
+    public void GetStatusName_CalledTwice_ReturnsSameValue()
+    {
+        var cache = CreateCache();
+
+        var first = cache.GetStatusName(1);
+        var second = cache.GetStatusName(1);
+
+        first.Should().Be("Active");
+        second.Should().Be(first);
+    }
+
+    [Fact]
+    public void GetStatusName_WithUnknownStatus_ReturnsUnknown()
+    {
+        var cache = CreateCache();
+
+        var name = cache.GetStatusName(99);
+
+        name.Should().Be("Unknown");
+    }
 }

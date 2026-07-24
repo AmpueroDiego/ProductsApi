@@ -1,7 +1,7 @@
 -- ============================================================
 -- ProductsDb schema + seed data
--- Run as-is in SSMS or with:
---   sqlcmd -S "(localdb)\MSSQLLocalDB" -i db/schema.sql
+-- Run as-is in SSMS or with (replace -S with your server):
+--   sqlcmd -S "DESKTOP-N7JPT0O" -i db/schema.sql
 -- ============================================================
 
 IF DB_ID('ProductsDb') IS NULL

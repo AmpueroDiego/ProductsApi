@@ -26,7 +26,6 @@ public class DiscountService : IDiscountService
         }
         catch
         {
-            // Any failure (network, timeout, bad payload) must not break the request.
             return 0;
         }
     }

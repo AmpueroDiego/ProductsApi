@@ -5,35 +5,15 @@ namespace Products.Tests;
 
 public class FinalPriceTests
 {
-    [Fact]
-    public void CalculateFinalPrice_WithNormalDiscount_AppliesPercentage()
+    [Theory]
+    [InlineData(100, 20, 80.00)]    // descuento normal
+    [InlineData(100, 0, 100.00)]    // sin descuento
+    [InlineData(100, 100, 0.00)]    // descuento total
+    [InlineData(99.99, 10, 89.99)]  // redondeo a 2 decimales
+    public void CalculateFinalPrice_ReturnsExpected(decimal price, int discount, decimal expected)
     {
-        var result = PriceCalculator.CalculateFinalPrice(price: 100m, discount: 20);
+        var result = PriceCalculator.CalculateFinalPrice(price, discount);
 
-        result.Should().Be(80.00m);
-    }
-
-    [Fact]
-    public void CalculateFinalPrice_WithZeroDiscount_ReturnsSamePrice()
-    {
-        var result = PriceCalculator.CalculateFinalPrice(price: 100m, discount: 0);
-
-        result.Should().Be(100.00m);
-    }
-
-    [Fact]
-    public void CalculateFinalPrice_WithFullDiscount_ReturnsZero()
-    {
-        var result = PriceCalculator.CalculateFinalPrice(price: 100m, discount: 100);
-
-        result.Should().Be(0.00m);
-    }
-
-    [Fact]
-    public void CalculateFinalPrice_WithDecimalPrice_RoundsToTwoDecimals()
-    {
-        var result = PriceCalculator.CalculateFinalPrice(price: 99.99m, discount: 10);
-
-        result.Should().Be(89.99m);
+        result.Should().Be(expected);
     }
 }

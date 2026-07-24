@@ -18,7 +18,7 @@ public class DiscountServiceTests
     {
         var httpClient = new HttpClient(new ThrowingHandler())
         {
-            BaseAddress = new Uri("https://example.test/")
+            BaseAddress = new Uri("https://6a62e3d71bffb2ffab8b7df7.mockapi.io/api/v2/")
         };
         var service = new DiscountService(httpClient);
 

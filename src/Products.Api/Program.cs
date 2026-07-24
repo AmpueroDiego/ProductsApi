@@ -1,8 +1,10 @@
-using FluentValidation;
+using System.Reflection;
+using Microsoft.AspNetCore.Diagnostics;
+using Microsoft.OpenApi;
 using Products.Api.Middleware;
+using Products.Application.Exceptions;
 using Products.Application.Interfaces;
 using Products.Application.Services;
-using Products.Application.Validators;
 using Products.Infrastructure.Cache;
 using Products.Infrastructure.Data;
 using Products.Infrastructure.External;
@@ -12,7 +14,22 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
+builder.Services.AddSwaggerGen(options =>
+{
+    options.SwaggerDoc("v1", new OpenApiInfo
+    {
+        Title = "Products API",
+        Version = "v1",
+        Description = "API REST para la gestión de productos (crear, actualizar y consultar)."
+    });
+
+    var xmlFile = $"{Assembly.GetExecutingAssembly().GetName().Name}.xml";
+    var xmlPath = Path.Combine(AppContext.BaseDirectory, xmlFile);
+    if (File.Exists(xmlPath))
+    {
+        options.IncludeXmlComments(xmlPath);
+    }
+});
 
 // Database: a simple factory that returns a brand new connection per call.
 var connectionString = builder.Configuration.GetConnectionString("SqlServer")
@@ -38,7 +55,6 @@ builder.Services.AddHttpClient<IDiscountService, DiscountService>(client =>
 });
 
 builder.Services.AddScoped<ProductService>();
-builder.Services.AddValidatorsFromAssemblyContaining<CreateProductRequestValidator>();
 
 var app = builder.Build();
 
@@ -49,7 +65,23 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseMiddleware<RequestTimingMiddleware>();
-app.UseMiddleware<ExceptionHandlingMiddleware>();
+
+// Global error handling: map domain exceptions to HTTP status codes.
+app.UseExceptionHandler(errorApp => errorApp.Run(async context =>
+{
+    var exception = context.Features.Get<IExceptionHandlerFeature>()?.Error;
+
+    var (status, error, message) = exception switch
+    {
+        ProductNotFoundException => (StatusCodes.Status404NotFound, "Not Found", exception.Message),
+        ProductAlreadyExistsException => (StatusCodes.Status409Conflict, "Conflict", exception.Message),
+        _ => (StatusCodes.Status500InternalServerError, "Internal Server Error", "An unexpected error occurred.")
+    };
+
+    context.Response.StatusCode = status;
+    context.Response.ContentType = "application/json";
+    await context.Response.WriteAsJsonAsync(new { status, error, message });
+}));
 
 app.UseHttpsRedirection();
 app.UseAuthorization();

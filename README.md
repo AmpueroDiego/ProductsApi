@@ -27,14 +27,14 @@ central es **inversión de dependencias**: `Application` define las interfaces e
 ni HttpClient.
 
 - **`Products.Domain`**: la entidad `Product`. Sin dependencias de nada.
-- **`Products.Application`**: la lógica de negocio (`ProductService`), los DTOs,
-  los validators y las **interfaces** (`IProductRepository`, `IDiscountService`,
-  `IStatusCache`). Depende solo de `Domain`.
+- **`Products.Application`**: la lógica de negocio (`ProductService`), los DTOs
+  (con validación por Data Annotations) y las **interfaces** (`IProductRepository`,
+  `IDiscountService`, `IStatusCache`). Depende solo de `Domain`.
 - **`Products.Infrastructure`**: las implementaciones concretas —
   `ProductRepository` (Dapper), `StatusCache` (IMemoryCache) y `DiscountService`
   (HttpClient). Implementa las interfaces de `Application`.
-- **`Products.Api`**: los controllers, los middlewares, `Program.cs` y el registro
-  de dependencias (DI).
+- **`Products.Api`**: los controllers, el middleware de tiempos, `Program.cs` y el
+  registro de dependencias (DI).
 - **`Products.Tests`**: un único proyecto de tests (xUnit + FluentAssertions +
   NSubstitute).
 
@@ -49,9 +49,9 @@ Dirección de dependencias: `Api` → `Application` + `Infrastructure`;
 - **Dependency Injection**: las dependencias se inyectan por constructor y se
   registran en `Program.cs`. Esto permite cambiar implementaciones y mockearlas en
   los tests sin tocar la lógica.
-- **Middleware**: piezas del pipeline HTTP que resuelven una preocupación
-  transversal cada una — medición de tiempos y manejo global de errores — sin
-  ensuciar los controllers.
+- **Middleware**: `RequestTimingMiddleware` mide el tiempo de cada request. El
+  manejo global de errores se resuelve con `UseExceptionHandler`, sin ensuciar los
+  controllers.
 
 ## Por qué Dapper y no EF Core
 
@@ -66,19 +66,20 @@ strings, para evitar inyección SQL.
 
 ## Cómo levantarlo
 
-Requisitos: .NET 10 SDK y SQL Server LocalDB (viene con Visual Studio; si no,
-instalá "SQL Server Express LocalDB").
+Requisitos: .NET 10 SDK y una instancia de SQL Server (Express, Developer o
+LocalDB) con autenticación de Windows.
 
 1. **Clonar** el repositorio.
-2. **Crear la base de datos**: correr `db/schema.sql` en SSMS, o por consola:
+2. **Crear la base de datos**: correr `db/schema.sql` en SSMS, o por consola
+   (reemplazá el `-S` por tu servidor):
    ```powershell
-   sqlcmd -S "(localdb)\MSSQLLocalDB" -i db/schema.sql
+   sqlcmd -S "DESKTOP-N7JPT0O" -i db/schema.sql
    ```
-3. **Ajustar la connection string** si hace falta en
+3. **Ajustar la connection string** en
    `src/Products.Api/appsettings.json`, sección `ConnectionStrings:SqlServer`.
-   El valor por defecto usa LocalDB:
+   Cambiá `Server=` por el nombre de tu instancia (podés usar `localhost` o `.`):
    ```
-   Server=(localdb)\MSSQLLocalDB;Database=ProductsDb;Trusted_Connection=True;TrustServerCertificate=True;
+   Server=DESKTOP-N7JPT0O;Database=ProductsDb;Trusted_Connection=True;TrustServerCertificate=True;
    ```
 4. **Configurar el servicio de descuento** (ver sección más abajo) y poner la URL
    base en `DiscountService:BaseUrl`.
@@ -147,7 +148,7 @@ excepción). Formato:
 
 ## Manejo de errores
 
-`ExceptionHandlingMiddleware` centraliza los errores y devuelve un JSON
+`UseExceptionHandler` (en `Program.cs`) centraliza los errores y devuelve un JSON
 consistente. Los controllers no tienen `try/catch`. Mapea:
 
 - `ProductNotFoundException` → `404`
@@ -167,16 +168,16 @@ consistente. Los controllers no tienen `try/catch`. Mapea:
 - **`IDbConnectionFactory`**: se registra como singleton, pero cada llamada a
   `CreateConnection()` devuelve una `SqlConnection` nueva. No se comparte una
   conexión entre requests.
-- **Validación en el controller**: los validators de FluentValidation se invocan
-  explícitamente en el controller y devuelven `400` con el detalle por campo
-  (`ValidationProblemDetails`).
+- **Validación con Data Annotations**: los DTOs se anotan con `[Required]`,
+  `[MaxLength]` y `[Range]`. Gracias a `[ApiController]`, ASP.NET valida
+  automáticamente y devuelve `400` con el detalle por campo
+  (`ValidationProblemDetails`) antes de entrar al controller.
 - **Repo git propio**: este proyecto tiene su propio repositorio git local. No se
   hizo push a ningún remoto.
 
 ## Paquetes principales
 
 - `Dapper`, `Microsoft.Data.SqlClient`
-- `FluentValidation` (+ `FluentValidation.DependencyInjectionExtensions`)
 - `Swashbuckle.AspNetCore` (Swagger UI)
 - `Microsoft.Extensions.Caching.Memory` (IMemoryCache)
 - Tests: `xUnit`, `FluentAssertions` 7.2.0, `NSubstitute`
